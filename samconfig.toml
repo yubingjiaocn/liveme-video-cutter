@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "liveme-video-cutter"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-v52hn38knuw2"
+s3_prefix = "liveme-video-cutter"
+region = "ap-southeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "RecordBucketName=\"liveme-recording\" RecordTableName=\"liveme-recording\" ResultESDomain=\"log-collection\" ResultESEndpoint=\"search-log-collection-rak3srg726tdtm5dgbjvrdq37q.ap-southeast-1.es.amazonaws.com\" ResultESIndex=\"liveme-video\" SGEndPoint=\"\""

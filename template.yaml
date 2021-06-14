@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Cut 30s video from a live stream
+Parameters:
+  RecordBucketName:
+    Description: Bucket name to save recording
+    Type: String
+  RecordTableName:
+    Description: DynamoDB Table name for tracking recording
+    Type: String
+  ResultESDomain:
+    Description: ElasticSearch Domain for result store
+    Type: String  
+  ResultESEndpoint:
+    Description: ElasticSearch endpoint URL for result store
+    Type: String
+  ResultESIndex:
+    Description: Index name in ElasticSearch
+    Type: String  
+  SGEndPoint:
+    Description: Endpoint Name in Sagemaker
+    Type: String  
+Resources:
+
+  FFMpeg:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: layers/ffmpeg
+      CompatibleRuntimes:
+        - python3.8
+
+  AddVideotoDB:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: functions/add_video/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 256
+      Timeout: 10
+      Tracing: Active
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RecordTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecordTableName    
+
+  VideoCutter:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: functions/video_cutter/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 2048
+      Timeout: 50
+      Tracing: Active
+      Layers:
+        - !Ref FFMpeg
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RecordTableName
+          BUCKET_NAME: !Ref RecordBucketName  
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref RecordBucketName
+        - DynamoDBWritePolicy:
+            TableName: !Ref RecordTableName       
+
+  Scanner:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: functions/scanner/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 256
+      Timeout: 60
+      Tracing: Active
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RecordTableName
+          BUCKET_NAME: !Ref RecordBucketName
+          VIDEO_CUTTER_NAME: !Ref VideoCutter
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecordTableName
+        - LambdaInvokePolicy:
+            FunctionName: !Ref VideoCutter
+
+  SGTrigger:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: functions/s3_sg_trigger/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 256
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:     
+          BUCKET_NAME: !Ref RecordBucketName  
+          ES_NAME: !Ref ResultESDomain
+          ES_INDEX: !Ref ResultESIndex
+          ES_ENDPOINT: !Ref ResultESEndpoint
+          SG_ENDPOINT: !Ref SGEndPoint
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref RecordBucketName
+        - ElasticsearchHttpPostPolicy:
+            DomainName: !Ref ResultESDomain
+      # Manual grant IAM policy to Sagemaker
