@@ -87,6 +87,22 @@ Resources:
         - LambdaInvokePolicy:
             FunctionName: !Ref VideoCutter
 
+  HealthChecker:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: functions/healthchecker/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 256
+      Timeout: 60
+      Tracing: Active
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RecordTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecordTableName
+
   SGTrigger:
     Type: AWS::Serverless::Function 
     Properties:

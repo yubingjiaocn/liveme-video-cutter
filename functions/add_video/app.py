@@ -13,6 +13,7 @@ def lambda_handler(event, context):
     interval = int(event['interval'])
     duration = int(event['duration'])
     timestamp = int(time.time())
+    
     table.put_item(
         Item={
             'id': id,
@@ -20,6 +21,7 @@ def lambda_handler(event, context):
             'interval': interval,
             'duration': duration,
             'last_access': timestamp - interval - 1,
+            'available': 1
         }
     )
 

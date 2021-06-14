@@ -16,32 +16,28 @@ lambda_client = boto3.client('lambda')
 def lambda_handler(event, context):
     timestamp = int(time.time())
     resp = table.scan(
-        #FilterExpression = Attr('last_access').lt(timestamp - 300),
+        FilterExpression=Attr('available').eq(1)
     )
+
     items = resp['Items']
     for item in items:
-        try:
-            r = requests.get(item["url"], timeout=2)
-            if r.ok:   
-                lambda_payload = {
-                    "id": item["id"],
-                    "url": item["url"],
-                    "duration": str(int(item["duration"])),
-                    "bucket": bucketname,
-                    "prefix": ''
-                }
+        lambda_payload = {
+            "id": item["id"],
+            "url": item["url"],
+            "duration": str(int(item["duration"])),
+            "bucket": bucketname,
+            "prefix": ''
+        }
 
-                lambda_client.invoke(FunctionName=cuttername, 
-                     InvocationType='Event',
-                     Payload=json.dumps(lambda_payload))
+        lambda_client.invoke(FunctionName=cuttername,
+                             InvocationType='Event',
+                             Payload=json.dumps(lambda_payload))
 
-                print('Start recording livestream ' + item["id"])
+        print('Start recording livestream ' + item["id"])
 
-                table.update_item(Key={'id': item["id"]}, UpdateExpression='SET last_access = :val1', ExpressionAttributeValues={':val1': timestamp})
-            else:
-                print(item["id"] + ' has stopped streaming, skipped')
-        except requests.exceptions.RequestException as e: print(item["id"] + ' connection failed, skipped')
-
+        table.update_item(Key={'id': item["id"]},
+                          UpdateExpression='SET last_access = :val1',
+                          ExpressionAttributeValues={':val1': timestamp})
 
     return {
         "statusCode": 200
