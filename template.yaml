@@ -52,11 +52,13 @@ Resources:
       CodeUri: functions/video_cutter/
       Handler: app.lambda_handler
       Runtime: python3.8
-      MemorySize: 2048
+      MemorySize: 512
       Timeout: 50
       Tracing: Active
       Layers:
         - !Ref FFMpeg
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
@@ -94,7 +96,7 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.8
       MemorySize: 256
-      Timeout: 60
+      Timeout: 120
       Tracing: Active
       Environment:
         Variables:
@@ -124,4 +126,10 @@ Resources:
             BucketName: !Ref RecordBucketName
         - ElasticsearchHttpPostPolicy:
             DomainName: !Ref ResultESDomain
-      # Manual grant IAM policy to Sagemaker
+        - Statement:
+          - Sid: SagemakerInvokeEndpointPolicy
+            Effect: Allow
+            Action:
+            - sagemaker:InvokeEndpoint
+            - sagemaker:ListEndpoints
+            Resource: '*'

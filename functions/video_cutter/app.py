@@ -22,18 +22,23 @@ def lambda_handler(event, context):
     if prefix != '' :
         prefix = prefix + '/' 
     timestamp = int(time.time())
-    filename = str(id) + '_' + str(timestamp) + '.mp4'
-    cmd = 'ffmpeg -t ' + duration + ' -i ' + url + ' -c copy /tmp/' + filename
+    filename = str(id) + '_' + str(timestamp)
+    vid_filename = filename + '.ts'
+    aud_filename = filename + '.mp3'
+    cmd = 'ffmpeg -t ' + duration + ' -i ' + url + ' -vcodec copy -an /tmp/' + vid_filename + ' -acodec mp3 -vn /tmp/' + aud_filename
     print(cmd)
     subprocess.check_output(cmd, shell=True)
 
-    cmd = 'ffprobe -v 0 -of compact=p=0:nokey=1 -select_streams 0 -show_entries stream=r_frame_rate /tmp/' + filename
+    ''' 
+    cmd = 'ffprobe -v 0 -of compact=p=0:nokey=1 -select_streams 0 -show_entries stream=r_frame_rate /tmp/' + vid_filename
     fps = '{:.2f}'.format(eval(subprocess.getoutput(cmd)))
     print ("Frame Rate: " + fps)
 
     table.update_item(Key={'id': id}, UpdateExpression='SET frame_rate = :val1', ExpressionAttributeValues={':val1': fps})
+    '''
 
-    response = s3_client.upload_file('/tmp/' + filename, bucket, prefix + id + '/' + filename)
+    response = s3_client.upload_file('/tmp/' + vid_filename, bucket, prefix + id + '/' + vid_filename)
+    response = s3_client.upload_file('/tmp/' + aud_filename, bucket, prefix + id + '/' + aud_filename)
 
     return {
         "statusCode": 200,
