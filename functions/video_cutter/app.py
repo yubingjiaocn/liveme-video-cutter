@@ -23,9 +23,9 @@ def lambda_handler(event, context):
         prefix = prefix + '/' 
     timestamp = int(time.time())
     filename = str(id) + '_' + str(timestamp)
-    vid_filename = filename + '.ts'
+    vid_filename = filename + '.mp4'
     aud_filename = filename + '.mp3'
-    cmd = 'ffmpeg -t ' + duration + ' -i ' + url + ' -vcodec copy -an /tmp/' + vid_filename + ' -acodec mp3 -vn /tmp/' + aud_filename
+    cmd = 'ffmpeg -t ' + duration + ' -i ' + url + ' -vcodec mpeg4 -an /tmp/' + vid_filename + ' -acodec mp3 -vn /tmp/' + aud_filename
     print(cmd)
     subprocess.check_output(cmd, shell=True)
 
