@@ -3,7 +3,7 @@ from elasticsearch import Elasticsearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 import boto3
 import os
-
+'''
 # Init ES
 es_host = os.environ.get('ES_ENDPOINT') 
 region = os.environ.get('AWS_REGION') 
@@ -20,11 +20,10 @@ es = Elasticsearch(
 )
 
 es_index = os.environ.get('ES_INDEX') 
+'''
 
-# Init Sagemaker, No SG in testing environment
-
-# sg = boto3.client('sagemaker-runtime')
-# endpoint_name = os.environ.get('SG_ENDPOINT') 
+sg = boto3.client('sagemaker-runtime')
+endpoint_name = os.environ.get('SG_ENDPOINT') 
 
 def lambda_handler(event, context):
 
@@ -38,18 +37,17 @@ def lambda_handler(event, context):
 
     print('Processing s3://' + bucket + '/' + video_uri)
 
-#    No SG environment in testing environment, use static response
-#    response = sg.invoke_endpoint(EndpointName = endpoint_name,
-#        Body = payload,
-#        ContentType = 'application/json')
+    response = sg.invoke_endpoint(EndpointName = endpoint_name,
+        Body = payload,
+        ContentType = 'application/json')
 
-#    resp = response['Body'].read().decode() 
+    resp = response['Body'].read().decode() 
 
-    resp = '{\'score\': \'success\'}'
+#    resp = '{\'score\': \'success\'}'
 
     print (resp)
 
-    es.index(index = es_index, doc_type = "_doc", body = resp)
+#    es.index(index = es_index, doc_type = "_doc", body = resp)
 
     return {
         "statusCode": 200        

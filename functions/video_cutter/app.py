@@ -38,7 +38,7 @@ def lambda_handler(event, context):
     '''
 
     response = s3_client.upload_file('/tmp/' + vid_filename, bucket, prefix + id + '/' + vid_filename)
-    response = s3_client.upload_file('/tmp/' + aud_filename, bucket, prefix + id + '/' + aud_filename)
+#    response = s3_client.upload_file('/tmp/' + aud_filename, bucket, prefix + id + '/' + aud_filename)
 
     return {
         "statusCode": 200,
