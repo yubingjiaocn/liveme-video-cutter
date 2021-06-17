@@ -98,6 +98,8 @@ Resources:
       MemorySize: 256
       Timeout: 120
       Tracing: Active
+      Layers:
+        - !Ref FFMpeg
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
