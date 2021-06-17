@@ -23,7 +23,7 @@ def check_livestream(url, id):
         r = s.get(url, timeout=(0.3,1))
         if r.ok:
             #print('Livestream ' + id + ' master playlist OK')
-            cmd = 'ffprobe -hide_banner -loglevel error ' + url
+            cmd = 'ffprobe -max_reload 3 -hide_banner -loglevel error ' + url
             try:
                 subprocess.run(cmd, shell=True, check=True)
                 available = 1
