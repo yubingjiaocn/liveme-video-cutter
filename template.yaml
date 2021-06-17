@@ -36,7 +36,7 @@ Resources:
       CodeUri: functions/add_video/
       Handler: app.lambda_handler
       Runtime: python3.8
-      MemorySize: 256
+      MemorySize: 128
       Timeout: 10
       Tracing: Active
       Environment:
@@ -75,9 +75,21 @@ Resources:
       CodeUri: functions/scanner/
       Handler: app.lambda_handler
       Runtime: python3.8
-      MemorySize: 256
+      MemorySize: 128
       Timeout: 60
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 1    
       Tracing: Active
+      Events:
+        CWSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: 'rate(5 minutes)'
+            Name: Scanner
+            Description: Cron for scanner
+            Enabled: true
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
@@ -95,9 +107,21 @@ Resources:
       CodeUri: functions/healthchecker/
       Handler: app.lambda_handler
       Runtime: python3.8
-      MemorySize: 256
-      Timeout: 120
+      MemorySize: 512
+      Timeout: 60
       Tracing: Active
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 1  
+      Events:
+        CWSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: 'rate(1 minute)'
+            Name: HealthChecker
+            Description: Cron for health check
+            Enabled: true
       Layers:
         - !Ref FFMpeg
       Environment:
