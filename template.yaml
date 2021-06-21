@@ -21,6 +21,9 @@ Parameters:
   SGEndPoint:
     Description: Endpoint Name in Sagemaker
     Type: String  
+  CWLogGroup:
+    Description: Cloudwatch Log group 
+    Type: String
 Resources:
 
   FFMpeg:
@@ -39,12 +42,23 @@ Resources:
       MemorySize: 128
       Timeout: 10
       Tracing: Active
+      AutoPublishAlias: dev
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
+          LOG_GROUP: !Ref CWLogGroup
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref RecordTableName    
+            TableName: !Ref RecordTableName   
+        - Statement:
+          - Sid: PutCWEventsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'     
 
   VideoCutter:
     Type: AWS::Serverless::Function 
@@ -55,21 +69,31 @@ Resources:
       MemorySize: 512
       Timeout: 50
       Tracing: Active
+      AutoPublishAlias: dev
       Layers:
         - !Ref FFMpeg
       EventInvokeConfig:
         MaximumRetryAttempts: 0
-      ProvisionedConcurrencyConfig:
-        ProvisionedConcurrentExecutions: 50      
+      ReservedConcurrentExecutions: 50     
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
-          BUCKET_NAME: !Ref RecordBucketName  
+          BUCKET_NAME: !Ref RecordBucketName
+          LOG_GROUP: !Ref CWLogGroup  
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref RecordBucketName
         - DynamoDBWritePolicy:
-            TableName: !Ref RecordTableName       
+            TableName: !Ref RecordTableName
+        - Statement:
+          - Sid: PutCWEventsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'            
 
   Scanner:
     Type: AWS::Serverless::Function 
@@ -79,10 +103,10 @@ Resources:
       Runtime: python3.8
       MemorySize: 128
       Timeout: 60
+      AutoPublishAlias: dev
       EventInvokeConfig:
         MaximumRetryAttempts: 0
-      ProvisionedConcurrencyConfig:
-        ProvisionedConcurrentExecutions: 1    
+      ReservedConcurrentExecutions: 1   
       Tracing: Active
       Events:
         CWSchedule:
@@ -97,11 +121,21 @@ Resources:
           TABLE_NAME: !Ref RecordTableName
           BUCKET_NAME: !Ref RecordBucketName
           VIDEO_CUTTER_NAME: !Ref VideoCutter
+          LOG_GROUP: !Ref CWLogGroup
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName
         - LambdaInvokePolicy:
             FunctionName: !Ref VideoCutter
+        - Statement:
+          - Sid: PutCWEventsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'     
 
   HealthChecker:
     Type: AWS::Serverless::Function 
@@ -112,10 +146,10 @@ Resources:
       MemorySize: 512
       Timeout: 60
       Tracing: Active
+      AutoPublishAlias: dev
       EventInvokeConfig:
         MaximumRetryAttempts: 0
-      ProvisionedConcurrencyConfig:
-        ProvisionedConcurrentExecutions: 1  
+      ReservedConcurrentExecutions: 1
       Events:
         CWSchedule:
           Type: Schedule
@@ -129,9 +163,19 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
+          LOG_GROUP: !Ref CWLogGroup
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName
+        - Statement:
+          - Sid: PutCWEventsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'     
 
   SGTrigger:
     Type: AWS::Serverless::Function 
@@ -142,6 +186,7 @@ Resources:
       MemorySize: 256
       Timeout: 30
       Tracing: Active
+      AutoPublishAlias: dev
       Environment:
         Variables:     
           BUCKET_NAME: !Ref RecordBucketName  
@@ -149,6 +194,7 @@ Resources:
           ES_INDEX: !Ref ResultESIndex
           ES_ENDPOINT: !Ref ResultESEndpoint
           SG_ENDPOINT: !Ref SGEndPoint
+          LOG_GROUP: !Ref CWLogGroup
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref RecordBucketName
@@ -161,3 +207,12 @@ Resources:
             - sagemaker:InvokeEndpoint
             - sagemaker:ListEndpoints
             Resource: '*'
+        - Statement:
+          - Sid: PutCWEventsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'     
