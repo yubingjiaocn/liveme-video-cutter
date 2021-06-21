@@ -13,6 +13,11 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(tablename)
 lambda_client = boto3.client('lambda')
 
+logs = boto3.client('logs')
+
+LOG_GROUP = os.environ.get('LOG_GROUP')
+LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Access')
+
 def lambda_handler(event, context):
     timestamp = int(time.time())
     resp = table.scan(
@@ -20,6 +25,36 @@ def lambda_handler(event, context):
     )
 
     items = resp['Items']
+    count = str(len(items))
+
+    try:
+       logs.create_log_stream(logGroupName=LOG_GROUP, logStreamName=LOG_STREAM)
+    except logs.exceptions.ResourceAlreadyExistsException:
+       pass
+
+    response = logs.describe_log_streams(
+        logGroupName=LOG_GROUP,
+        logStreamNamePrefix=LOG_STREAM
+    )
+    
+    if 'uploadSequenceToken' in response['logStreams'][0]:
+        token = response['logStreams'][0]['uploadSequenceToken']
+    else:
+        token = "0"
+        
+    response = logs.put_log_events(
+        logGroupName=LOG_GROUP,
+        logStreamName=LOG_STREAM,
+        logEvents=[{
+                'timestamp': int(round(time.time() * 1000)),
+                'message': json.dumps({
+                    'Level': 'INFO',
+                    'Src': 'Scanner',
+                    'Count': count})
+            }],
+        sequenceToken=token
+    )
+
     for item in items:
         lambda_payload = {
             "id": item["id"],

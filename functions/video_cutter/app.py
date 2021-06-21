@@ -5,6 +5,11 @@ import boto3
 from botocore.config import Config
 import os
 
+logs = boto3.client('logs')
+
+LOG_GROUP = os.environ.get('LOG_GROUP')
+LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Access')
+
 tablename = os.environ.get('TABLE_NAME')
 
 dynamodb = boto3.resource('dynamodb')
@@ -40,9 +45,42 @@ def lambda_handler(event, context):
     response = s3_client.upload_file('/tmp/' + vid_filename, bucket, prefix + id + '/' + vid_filename)
 #    response = s3_client.upload_file('/tmp/' + aud_filename, bucket, prefix + id + '/' + aud_filename)
 
+    try:
+       logs.create_log_stream(logGroupName=LOG_GROUP, logStreamName=LOG_STREAM)
+    except logs.exceptions.ResourceAlreadyExistsException:
+       pass
+
+    response = logs.describe_log_streams(
+        logGroupName=LOG_GROUP,
+        logStreamNamePrefix=LOG_STREAM
+    )
+    
+    if 'uploadSequenceToken' in response['logStreams'][0]:
+        token = response['logStreams'][0]['uploadSequenceToken']
+    else:
+        token = "0"
+        
+    response = logs.put_log_events(
+        logGroupName=LOG_GROUP,
+        logStreamName=LOG_STREAM,
+        logEvents=[
+            {
+                'timestamp': int(round(time.time() * 1000)),
+                'message': json.dumps({
+                    'Level': 'INFO',
+                    'Src': 'VideoCutter',
+                    'ID': id,
+                    'URL': url,
+                    'Path': 's3://'+ bucket + '/' + prefix + id + '/' + vid_filename,
+                    'Result': 'SUCCESS'})
+            }
+        ],
+        sequenceToken=token
+    )
+
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "recording_url": 's3://'+ bucket + '/' + prefix + id + '/' + filename
+            "recording_url": 's3://'+ bucket + '/' + prefix + id + '/' + vid_filename
         })
     }

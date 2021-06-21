@@ -42,7 +42,6 @@ Resources:
       MemorySize: 128
       Timeout: 10
       Tracing: Active
-      AutoPublishAlias: dev
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
@@ -69,7 +68,6 @@ Resources:
       MemorySize: 512
       Timeout: 50
       Tracing: Active
-      AutoPublishAlias: dev
       Layers:
         - !Ref FFMpeg
       EventInvokeConfig:
@@ -103,7 +101,6 @@ Resources:
       Runtime: python3.8
       MemorySize: 128
       Timeout: 60
-      AutoPublishAlias: dev
       EventInvokeConfig:
         MaximumRetryAttempts: 0
       ReservedConcurrentExecutions: 1   
@@ -146,7 +143,6 @@ Resources:
       MemorySize: 512
       Timeout: 60
       Tracing: Active
-      AutoPublishAlias: dev
       EventInvokeConfig:
         MaximumRetryAttempts: 0
       ReservedConcurrentExecutions: 1
@@ -186,7 +182,6 @@ Resources:
       MemorySize: 256
       Timeout: 30
       Tracing: Active
-      AutoPublishAlias: dev
       Environment:
         Variables:     
           BUCKET_NAME: !Ref RecordBucketName  
