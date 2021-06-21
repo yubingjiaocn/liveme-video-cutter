@@ -59,6 +59,8 @@ Resources:
         - !Ref FFMpeg
       EventInvokeConfig:
         MaximumRetryAttempts: 0
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 50      
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
