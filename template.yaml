@@ -24,6 +24,9 @@ Parameters:
   CWLogGroup:
     Description: Cloudwatch Log group 
     Type: String
+  DDBTTL:
+    Description: TTL for each item in DynamoDB
+    Type: String  
 Resources:
 
   FFMpeg:
@@ -46,6 +49,7 @@ Resources:
         Variables:
           TABLE_NAME: !Ref RecordTableName
           LOG_GROUP: !Ref CWLogGroup
+          DDB_TTL: !Ref DDBTTL
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName   
@@ -119,6 +123,7 @@ Resources:
           BUCKET_NAME: !Ref RecordBucketName
           VIDEO_CUTTER_NAME: !Ref VideoCutter
           LOG_GROUP: !Ref CWLogGroup
+          DDB_TTL: !Ref DDBTTL
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName

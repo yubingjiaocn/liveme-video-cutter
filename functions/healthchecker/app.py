@@ -70,7 +70,9 @@ def lambda_handler(event, context):
     global logcontent
     timestamp = int(time.time())
     resp = table.scan(
-        FilterExpression = Attr('available').eq(1),
+        FilterExpression=Attr('available').eq(1),
+        ProjectionExpression="id, #u",
+        ExpressionAttributeNames={"#u": "url"}
     )
     items = resp['Items']
     count = len(items)

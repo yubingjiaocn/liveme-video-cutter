@@ -13,6 +13,8 @@ logs = boto3.client('logs')
 LOG_GROUP = os.environ.get('LOG_GROUP')
 LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Access')
 
+TTL = int(os.environ.get('DDB_TTL'))
+
 def lambda_handler(event, context):
     url = event['url']
     id = event['id']
@@ -27,6 +29,7 @@ def lambda_handler(event, context):
             'interval': interval,
             'duration': duration,
             'last_access': timestamp - interval - 1,
+            'itemttl': timestamp + TTL,
             'available': 1
         }
     )
@@ -35,33 +38,38 @@ def lambda_handler(event, context):
        logs.create_log_stream(logGroupName=LOG_GROUP, logStreamName=LOG_STREAM)
     except logs.exceptions.ResourceAlreadyExistsException:
        pass
-
-    response = logs.describe_log_streams(
-        logGroupName=LOG_GROUP,
-        logStreamNamePrefix=LOG_STREAM
-    )
     
-    if 'uploadSequenceToken' in response['logStreams'][0]:
-        token = response['logStreams'][0]['uploadSequenceToken']
-    else:
-        token = "0"
-        
-    response = logs.put_log_events(
-        logGroupName=LOG_GROUP,
-        logStreamName=LOG_STREAM,
-        logEvents=[
-            {
-                'timestamp': int(round(time.time() * 1000)),
-                'message': json.dumps({
-                    'Level': 'INFO',
-                    'Src': 'AddVideotoDB',
-                    'ID': id,
-                    'URL': url,
-                    'Result': 'SUCCESS'})
-            }
-        ],
-        sequenceToken=token
-    )
+    for attempt in range(3):
+        try:
+            response = logs.describe_log_streams(
+                logGroupName=LOG_GROUP,
+                logStreamNamePrefix=LOG_STREAM
+            )
+            
+            if 'uploadSequenceToken' in response['logStreams'][0]:
+                token = response['logStreams'][0]['uploadSequenceToken']
+            else:
+                token = "0"
+                
+            response = logs.put_log_events(
+                logGroupName=LOG_GROUP,
+                logStreamName=LOG_STREAM,
+                logEvents=[
+                    {
+                        'timestamp': int(round(time.time() * 1000)),
+                        'message': json.dumps({
+                            'Level': 'INFO',
+                            'Src': 'AddVideotoDB',
+                            'ID': id,
+                            'URL': url,
+                            'Result': 'SUCCESS'})
+                    }
+                ],
+                sequenceToken=token
+            )
+        except logs.exceptions.InvalidSequenceTokenException:
+            continue
+        break
 
     return {
         "statusCode": 200

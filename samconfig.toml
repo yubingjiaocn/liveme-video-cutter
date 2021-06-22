@@ -8,4 +8,4 @@ s3_prefix = "liveme-video-cutter"
 region = "ap-southeast-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "RecordBucketName=\"liveme-recording\" RecordTableName=\"liveme-recording\" ResultESDomain=\"\" ResultESEndpoint=\"\" ResultESIndex=\"\" SGEndPoint=\"\" CWLogGroup=\"liveme-video-cutter-eventlog\""
+parameter_overrides = "RecordBucketName=\"liveme-recording\" RecordTableName=\"liveme-recording\" ResultESDomain=\"\" ResultESEndpoint=\"\" ResultESIndex=\"\" SGEndPoint=\"\" CWLogGroup=\"liveme-video-cutter-eventlog\" DDBTTL=\"3600\""

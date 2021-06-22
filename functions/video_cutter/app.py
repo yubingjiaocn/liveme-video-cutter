@@ -30,7 +30,7 @@ def lambda_handler(event, context):
     filename = str(id) + '_' + str(timestamp)
     vid_filename = filename + '.mp4'
     aud_filename = filename + '.mp3'
-    cmd = 'ffmpeg -t ' + duration + ' -i ' + url + ' -vcodec mpeg4 -an /tmp/' + vid_filename + ' -acodec mp3 -vn /tmp/' + aud_filename
+    cmd = 'ffmpeg -hide_banner -t ' + duration + ' -i ' + url + ' -vcodec mpeg4 -an /tmp/' + vid_filename + ' -acodec mp3 -vn /tmp/' + aud_filename
     print(cmd)
     subprocess.check_output(cmd, shell=True)
 
@@ -50,34 +50,39 @@ def lambda_handler(event, context):
     except logs.exceptions.ResourceAlreadyExistsException:
        pass
 
-    response = logs.describe_log_streams(
-        logGroupName=LOG_GROUP,
-        logStreamNamePrefix=LOG_STREAM
-    )
-    
-    if 'uploadSequenceToken' in response['logStreams'][0]:
-        token = response['logStreams'][0]['uploadSequenceToken']
-    else:
-        token = "0"
+    for attempt in range(3):
+        response = logs.describe_log_streams(
+            logGroupName=LOG_GROUP,
+            logStreamNamePrefix=LOG_STREAM
+        )
         
-    response = logs.put_log_events(
-        logGroupName=LOG_GROUP,
-        logStreamName=LOG_STREAM,
-        logEvents=[
-            {
-                'timestamp': int(round(time.time() * 1000)),
-                'message': json.dumps({
-                    'Level': 'INFO',
-                    'Src': 'VideoCutter',
-                    'ID': id,
-                    'URL': url,
-                    'Path': 's3://'+ bucket + '/' + prefix + id + '/' + vid_filename,
-                    'Result': 'SUCCESS'})
-            }
-        ],
-        sequenceToken=token
-    )
-
+        if 'uploadSequenceToken' in response['logStreams'][0]:
+            token = response['logStreams'][0]['uploadSequenceToken']
+        else:
+            token = "0"
+    
+        try:    
+          response = logs.put_log_events(
+              logGroupName=LOG_GROUP,
+              logStreamName=LOG_STREAM,
+              logEvents=[
+                  {
+                      'timestamp': int(round(time.time() * 1000)),
+                      'message': json.dumps({
+                          'Level': 'INFO',
+                          'Src': 'VideoCutter',
+                          'ID': id,
+                          'URL': url,
+                          'Path': 's3://'+ bucket + '/' + prefix + id + '/' + vid_filename,
+                          'Result': 'SUCCESS'})
+                  }
+              ],
+              sequenceToken=token
+          )
+        except logs.exceptions.InvalidSequenceTokenException:
+            continue
+        break
+    
     return {
         "statusCode": 200,
         "body": json.dumps({

@@ -18,10 +18,14 @@ logs = boto3.client('logs')
 LOG_GROUP = os.environ.get('LOG_GROUP')
 LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Access')
 
+TTL = int(os.environ.get('DDB_TTL'))
+
 def lambda_handler(event, context):
     timestamp = int(time.time())
     resp = table.scan(
-        FilterExpression=Attr('available').eq(1)
+        FilterExpression=Attr('available').eq(1),
+        ProjectionExpression="id, #u, #d",
+        ExpressionAttributeNames={"#u": "url", "#d": "duration"}
     )
 
     items = resp['Items']
@@ -71,8 +75,8 @@ def lambda_handler(event, context):
         print('Start recording livestream ' + item["id"])
 
         table.update_item(Key={'id': item["id"]},
-                          UpdateExpression='SET last_access = :val1',
-                          ExpressionAttributeValues={':val1': timestamp})
+                          UpdateExpression='SET last_access = :val1, itemttl = :val2',
+                          ExpressionAttributeValues={':val1': timestamp, ':val2': timestamp + TTL})
 
     return {
         "statusCode": 200
