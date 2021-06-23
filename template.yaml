@@ -62,6 +62,31 @@ Resources:
             - logs:PutLogEvents
             - logs:DescribeLogStreams
             Resource: '*'     
+  DeleteVideofromDB:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: functions/delete_video/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 128
+      Timeout: 10
+      Tracing: Active
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RecordTableName
+          LOG_GROUP: !Ref CWLogGroup
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecordTableName   
+        - Statement:
+          - Sid: PutCWEventsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'            
 
   VideoCutter:
     Type: AWS::Serverless::Function 
@@ -104,7 +129,7 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.8
       MemorySize: 128
-      Timeout: 60
+      Timeout: 120
       EventInvokeConfig:
         MaximumRetryAttempts: 0
       ReservedConcurrentExecutions: 1   
@@ -145,8 +170,8 @@ Resources:
       CodeUri: functions/healthchecker/
       Handler: app.lambda_handler
       Runtime: python3.8
-      MemorySize: 512
-      Timeout: 60
+      MemorySize: 768
+      Timeout: 180
       Tracing: Active
       EventInvokeConfig:
         MaximumRetryAttempts: 0
@@ -155,7 +180,7 @@ Resources:
         CWSchedule:
           Type: Schedule
           Properties:
-            Schedule: 'rate(1 minute)'
+            Schedule: 'rate(3 minutes)'
             Name: HealthChecker
             Description: Cron for health check
             Enabled: true
