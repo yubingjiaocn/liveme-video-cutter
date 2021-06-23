@@ -49,12 +49,15 @@ def check_livestream(url, id):
         print("Livestream " + id + ' master playlist failed (Unable to connect)')
         
     if available == 0:
-        table.update_item(Key = {'id': id}, 
-                      UpdateExpression = 'SET available = :val1', 
-                      ConditionExpression='#u == :val2',
-                      ExpressionAttributeNames={'#u': 'url'},
-                      ExpressionAttributeValues = {':val1': available, ':val2': url})
-
+        try:
+            table.update_item(Key = {'id': id}, 
+              UpdateExpression = 'SET available = :val1', 
+              ConditionExpression='#u = :val2',
+              ExpressionAttributeNames={'#u': 'url'},
+              ExpressionAttributeValues = {':val1': 0, ':val2': url})
+        except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:      
+            pass
+        
         logcontent.append({
                 'timestamp': int(round(time.time() * 1000)),
                 'message': json.dumps({
