@@ -101,7 +101,7 @@ Resources:
         - !Ref FFMpeg
       EventInvokeConfig:
         MaximumRetryAttempts: 0
-      ReservedConcurrentExecutions: 50     
+      ReservedConcurrentExecutions: 100    
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
@@ -210,7 +210,7 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.8
       MemorySize: 256
-      Timeout: 30
+      Timeout: 120
       Tracing: Active
       Environment:
         Variables:     

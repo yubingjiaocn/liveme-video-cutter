@@ -52,7 +52,9 @@ def check_livestream(url, id):
     if available == 0:
         table.update_item(Key = {'id': id}, 
                       UpdateExpression = 'SET available = :val1', 
-                      ExpressionAttributeValues = {':val1': available})
+                      ConditionExpression='#u == :val2',
+                      ExpressionAttributeNames={'#u': 'url'},
+                      ExpressionAttributeValues = {':val1': available, ':val2': url})
 
         logcontent.append({
                 'timestamp': int(round(time.time() * 1000)),
@@ -104,9 +106,11 @@ def lambda_handler(event, context):
                     'Level': 'INFO',
                     'Src': 'HealthCheck',
                     'Deleted': deletecount,
-                    'Count': count - deletecount,
+                    'AfterCount': count - deletecount,
                     'Result': 'SUCCESS'})
-            })       
+            })
+            
+    print("After checking, " + str(deletecount) + " live streams are deleted, " + str(count - deletecount) + " available")        
 
     try:
        logs.create_log_stream(logGroupName=LOG_GROUP, logStreamName=LOG_STREAM)
