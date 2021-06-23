@@ -62,6 +62,7 @@ Resources:
             - logs:PutLogEvents
             - logs:DescribeLogStreams
             Resource: '*'     
+
   DeleteVideofromDB:
     Type: AWS::Serverless::Function 
     Properties:
@@ -101,7 +102,12 @@ Resources:
         - !Ref FFMpeg
       EventInvokeConfig:
         MaximumRetryAttempts: 0
-      ReservedConcurrentExecutions: 100    
+      ReservedConcurrentExecutions: 100  
+      EventInvokeConfig:
+        DestinationConfig:
+          OnFailure:
+            Destination: !GetAtt VideoCutterErrorHandling.Arn
+            Type: Lambda 
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
@@ -212,6 +218,7 @@ Resources:
       MemorySize: 256
       Timeout: 120
       Tracing: Active
+      ReservedConcurrentExecutions: 112
       Environment:
         Variables:     
           BUCKET_NAME: !Ref RecordBucketName  
@@ -241,3 +248,29 @@ Resources:
             - logs:PutLogEvents
             - logs:DescribeLogStreams
             Resource: '*'     
+
+  VideoCutterErrorHandling:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: functions/video_cutter_error/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 128
+      Timeout: 10
+      Tracing: Active
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RecordTableName
+          LOG_GROUP: !Ref CWLogGroup
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecordTableName   
+        - Statement:
+          - Sid: PutCWEventsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'                 
