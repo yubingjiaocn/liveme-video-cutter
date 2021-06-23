@@ -21,7 +21,6 @@ LOG_GROUP = os.environ.get('LOG_GROUP')
 LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Access')
 
 logcontent = []
-
 deletecount = 0
 
 def check_livestream(url, id):
@@ -70,6 +69,9 @@ def check_livestream(url, id):
 
 def lambda_handler(event, context):
     global logcontent
+    global deletecount
+    logcontent = []
+    deletecount = 0
     timestamp = int(time.time())
     resp = table.scan(
         FilterExpression=Attr('available').eq(1),
@@ -106,7 +108,7 @@ def lambda_handler(event, context):
                     'Level': 'INFO',
                     'Src': 'HealthCheck',
                     'Deleted': deletecount,
-                    'AfterCount': count - deletecount,
+                    'Count': count - deletecount,
                     'Result': 'SUCCESS'})
             })
             
