@@ -275,4 +275,30 @@ Resources:
             - logs:CreateLogStream
             - logs:PutLogEvents
             - logs:DescribeLogStreams
-            Resource: '*'                 
+            Resource: '*'
+
+  CircuitBreaker:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: functions/circuit_breaker/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 128
+      Timeout: 10
+      Tracing: Active
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RecordTableName
+          LOG_GROUP: !Ref CWLogGroup
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecordTableName   
+        - Statement:
+          - Sid: PutCWEventsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
