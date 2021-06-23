@@ -137,6 +137,7 @@ Resources:
       MemorySize: 128
       Timeout: 120
       EventInvokeConfig:
+        MaximumEventAgeInSeconds: 60
         MaximumRetryAttempts: 0
       ReservedConcurrentExecutions: 1   
       Tracing: Active
@@ -180,6 +181,7 @@ Resources:
       Timeout: 180
       Tracing: Active
       EventInvokeConfig:
+        MaximumEventAgeInSeconds: 60
         MaximumRetryAttempts: 0
       ReservedConcurrentExecutions: 1
       Events:

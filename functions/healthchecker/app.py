@@ -50,14 +50,15 @@ def check_livestream(url, id):
         
     if available == 0:
         try:
+            result = "DELETED"
             table.update_item(Key = {'id': id}, 
               UpdateExpression = 'SET available = :val1', 
               ConditionExpression='#u = :val2',
               ExpressionAttributeNames={'#u': 'url'},
               ExpressionAttributeValues = {':val1': 0, ':val2': url})
         except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:      
-            pass
-        
+            result = "REPLACED"
+
         logcontent.append({
                 'timestamp': int(round(time.time() * 1000)),
                 'message': json.dumps({
@@ -65,7 +66,7 @@ def check_livestream(url, id):
                     'Src': 'HealthCheck',
                     'ID': id,
                     'URL': url,
-                    'Result': 'DELETED'})
+                    'Result': result})
             })          
 
         deletecount += 1           
