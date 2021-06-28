@@ -29,7 +29,7 @@ Parameters:
     Type: String
   DDBTTL:
     Description: TTL for each item in DynamoDB
-    Type: String  
+    Type: String
 Resources:
 
   FFMpeg:
@@ -58,7 +58,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName   
         - Statement:
-          - Sid: PutCWEventsPolicy
+          - Sid: PutCWLogsPolicy
             Effect: Allow
             Action:
             - logs:CreateLogGroup
@@ -84,7 +84,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName   
         - Statement:
-          - Sid: PutCWEventsPolicy
+          - Sid: PutCWLogsPolicy
             Effect: Allow
             Action:
             - logs:CreateLogGroup
@@ -123,7 +123,7 @@ Resources:
         - DynamoDBWritePolicy:
             TableName: !Ref RecordTableName
         - Statement:
-          - Sid: PutCWEventsPolicy
+          - Sid: PutCWLogsPolicy
             Effect: Allow
             Action:
             - logs:CreateLogGroup
@@ -166,7 +166,7 @@ Resources:
         - LambdaInvokePolicy:
             FunctionName: !Ref VideoCutter
         - Statement:
-          - Sid: PutCWEventsPolicy
+          - Sid: PutCWLogsPolicy
             Effect: Allow
             Action:
             - logs:CreateLogGroup
@@ -206,7 +206,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName
         - Statement:
-          - Sid: PutCWEventsPolicy
+          - Sid: PutCWLogsPolicy
             Effect: Allow
             Action:
             - logs:CreateLogGroup
@@ -246,14 +246,54 @@ Resources:
             - sagemaker:ListEndpoints
             Resource: '*'
         - Statement:
-          - Sid: PutCWEventsPolicy
+          - Sid: PutCWLogsPolicy
             Effect: Allow
             Action:
             - logs:CreateLogGroup
             - logs:CreateLogStream
             - logs:PutLogEvents
             - logs:DescribeLogStreams
-            Resource: '*'     
+            Resource: '*'    
+
+  QueuedInference:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: functions/sqs_sg_trigger/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 256
+      Timeout: 120
+      Tracing: Active
+      ReservedConcurrentExecutions: 60
+      Environment:
+        Variables:     
+          BUCKET_NAME: !Ref RecordBucketName  
+          ES_NAME: !Ref ResultESDomain
+          ES_INDEX: !Ref ResultESIndex
+          ES_ENDPOINT: !Ref ResultESEndpoint
+          SG_ENDPOINT: !Ref SGEndPoint
+          LOG_GROUP: !Ref CWLogGroup
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref RecordBucketName
+        - ElasticsearchHttpPostPolicy:
+            DomainName: !Ref ResultESDomain
+        - Statement:
+          - Sid: SagemakerInvokeEndpointPolicy
+            Effect: Allow
+            Action:
+            - sagemaker:InvokeEndpoint
+            - sagemaker:ListEndpoints
+            Resource: '*'
+        - Statement:
+          - Sid: PutCWLogsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*' 
 
   VideoCutterErrorHandling:
     Type: AWS::Serverless::Function 
@@ -272,7 +312,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName   
         - Statement:
-          - Sid: PutCWEventsPolicy
+          - Sid: PutCWLogsPolicy
             Effect: Allow
             Action:
             - logs:CreateLogGroup
@@ -280,6 +320,7 @@ Resources:
             - logs:PutLogEvents
             - logs:DescribeLogStreams
             Resource: '*'
+            
 
   CircuitBreaker:
     Type: AWS::Serverless::Function 
