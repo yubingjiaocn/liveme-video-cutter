@@ -15,12 +15,32 @@ LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Access')
 
 TTL = int(os.environ.get('DDB_TTL'))
 
+PATTERN = os.environ.get('URL_PATTERN')
+
 def lambda_handler(event, context):
     url = event['url']
     id = event['id']
     interval = int(event['interval'])
     duration = int(event['duration'])
     timestamp = int(time.time())
+
+    if url == None:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({'message': 'URL is required'})
+        }
+
+    if url.find(PATTERN) == -1:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({'message': 'URL not match with pattern'})
+        } 
+        
+    if interval == 0: 
+        interval = 300
+
+    if duration == 0: 
+        interval = 30        
 
     table.put_item(
         Item={

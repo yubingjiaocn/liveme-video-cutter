@@ -3,6 +3,9 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   Cut 30s video from a live stream
 Parameters:
+  URLPattern:
+    Description: Pattern used in live stream URL
+    Type: String
   RecordBucketName:
     Description: Bucket name to save recording
     Type: String
@@ -50,6 +53,7 @@ Resources:
           TABLE_NAME: !Ref RecordTableName
           LOG_GROUP: !Ref CWLogGroup
           DDB_TTL: !Ref DDBTTL
+          URL_PATTERN: !Ref URLPattern
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName   

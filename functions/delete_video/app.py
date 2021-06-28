@@ -14,9 +14,15 @@ LOG_GROUP = os.environ.get('LOG_GROUP')
 LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Access')
 
 def lambda_handler(event, context):
+ 
     id = event['id']
-
-    table.update_item(Key = {'id': id}, 
+    if id == None:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({'message': 'ID is required'})
+        }
+    print("Delete " + str(id) + " by request")
+    table.update_item(Key = {'id': str(id)}, 
                       UpdateExpression = 'SET available = :val1', 
                       ExpressionAttributeValues = {':val1': 0})
 
