@@ -26,10 +26,11 @@ def lambda_handler(event, context):
         try:
             result = "DELETED"
             table.update_item(Key = {'id': id}, 
-              UpdateExpression = 'SET available = :val1', 
+              UpdateExpression = 'SET available = :val1, delete_timestamp = :val3, delete_method = :val4', 
               ConditionExpression='#u = :val2',
               ExpressionAttributeNames={'#u': 'url'},
-              ExpressionAttributeValues = {':val1': 0, ':val2': url})
+              ExpressionAttributeValues = {':val1': 0, ':val2': url, ':val3': int(time.time()),
+                                                         ':val4': 'CUTTERFATAL'})
         except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:      
             result = "REPLACED"
 
@@ -37,10 +38,11 @@ def lambda_handler(event, context):
         try:
             result = "TIMEOUT"
             table.update_item(Key = {'id': id}, 
-              UpdateExpression = 'SET available = :val1', 
+              UpdateExpression = 'SET available = :val1, delete_timestamp = :val3, delete_method = :val4', 
               ConditionExpression='#u = :val2',
               ExpressionAttributeNames={'#u': 'url'},
-              ExpressionAttributeValues = {':val1': 0, ':val2': url})
+              ExpressionAttributeValues = {':val1': 0, ':val2': url, ':val3': int(time.time()),
+                                                         ':val4': 'CUTTERFATAL'})
         except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:      
             result = "REPLACED"
         

@@ -13,8 +13,9 @@ logs = boto3.client('logs')
 LOG_GROUP = os.environ.get('LOG_GROUP')
 LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Access')
 
+
 def lambda_handler(event, context):
- 
+
     id = event['id']
     if id == None:
         return {
@@ -22,27 +23,30 @@ def lambda_handler(event, context):
             "body": json.dumps({'message': 'ID is required'})
         }
     print("Delete " + str(id) + " by request")
-    table.update_item(Key = {'id': str(id)}, 
-                      UpdateExpression = 'SET available = :val1', 
-                      ExpressionAttributeValues = {':val1': 0})
+    table.update_item(Key={'id': str(id)},
+                      UpdateExpression='SET available = :val1, delete_timestamp = :val2, delete_method = :val3',
+                      ExpressionAttributeValues={':val1': 0,
+                      ':val2': int(time.time()),
+                      ':val3': 'API'})
 
     try:
-       logs.create_log_stream(logGroupName=LOG_GROUP, logStreamName=LOG_STREAM)
+        logs.create_log_stream(logGroupName=LOG_GROUP,
+                               logStreamName=LOG_STREAM)
     except logs.exceptions.ResourceAlreadyExistsException:
-       pass
-    
+        pass
+
     for attempt in range(3):
         try:
             response = logs.describe_log_streams(
                 logGroupName=LOG_GROUP,
                 logStreamNamePrefix=LOG_STREAM
             )
-            
+
             if 'uploadSequenceToken' in response['logStreams'][0]:
                 token = response['logStreams'][0]['uploadSequenceToken']
             else:
                 token = "0"
-                
+
             response = logs.put_log_events(
                 logGroupName=LOG_GROUP,
                 logStreamName=LOG_STREAM,
