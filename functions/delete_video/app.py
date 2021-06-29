@@ -2,6 +2,7 @@ import time
 import boto3
 import os
 import json
+from boto3.dynamodb.conditions import Key
 
 tablename = os.environ.get('TABLE_NAME')
 
@@ -23,11 +24,20 @@ def lambda_handler(event, context):
             "body": json.dumps({'message': 'ID is required'})
         }
     print("Delete " + str(id) + " by request")
+
+    response = table.query(KeyConditionExpression=Key('id').eq(str(id)))
+    if 'delete_method' in response['Items'][0].keys():
+        delete_method = response['Items'][0]['delete_method'] + "+API"
+        delete_timestamp = response['Items'][0]['delete_timestamp']
+    else:
+        delete_method = "API"
+        delete_timestamp = int(time.time())
+
     table.update_item(Key={'id': str(id)},
                       UpdateExpression='SET available = :val1, delete_timestamp = :val2, delete_method = :val3',
                       ExpressionAttributeValues={':val1': 0,
-                      ':val2': int(time.time()),
-                      ':val3': 'API'})
+                      ':val2': delete_timestamp,
+                      ':val3': delete_method})
 
     try:
         logs.create_log_stream(logGroupName=LOG_GROUP,
