@@ -2,6 +2,7 @@ import time
 import boto3
 import os
 import json
+from boto3.dynamodb.conditions import Attr
 
 tablename = os.environ.get('TABLE_NAME')
 
@@ -14,18 +15,21 @@ LOG_GROUP = os.environ.get('LOG_GROUP')
 LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Error')
 
 def lambda_handler(event, context):
-
+    ids = []
     counter = 0
-    page = table.scan(ProjectionExpression='#i',
+    items = table.scan(ProjectionExpression='#i',
                       ExpressionAttributeNames={'#i': 'id'},
+                      FilterExpression=Attr('available').eq(1),
                       Limit=50)
 
-    with table.batch_writer() as batch:
-        counter = page["Count"]
-        ids = page["Items"]
-        #for itemKeys in page["Items"]:
-        #    batch.delete_item(Key=itemKeys)
-
+    for item in items:
+        table.update_item(Key={'id': item["id"]},
+                      UpdateExpression='SET available = :val1, delete_timestamp = :val3, delete_method = :val4',
+                      ExpressionAttributeValues={':val1': 0, ':val3': int(time.time()),
+                                                 ':val4': 'CIRCUITBREAKER'})
+        ids.append(id)        
+        counter += 1                                 
+        
     print(f"Circuit breaker activated, deleted {counter} live streams")
     print("Deleted IDs:")
     print(json.dumps(ids))
