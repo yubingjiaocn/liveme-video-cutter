@@ -25,7 +25,13 @@ def lambda_handler(event, context):
         }
     print("Delete " + str(id) + " by request")
 
-    response = table.query(KeyConditionExpression=Key('id').eq(str(id)))
+    response = table.query(KeyConditionExpression=Key('id').contains(str(id)))
+    if len(response['Items']) == 0:
+       return {
+            "statusCode": 400,
+            "body": json.dumps({'message': 'ID not exists'})
+        } 
+
     if 'delete_method' in response['Items'][0].keys():
         delete_method = response['Items'][0]['delete_method'] + "+API"
         delete_timestamp = response['Items'][0]['delete_timestamp']
