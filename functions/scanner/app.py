@@ -36,28 +36,33 @@ def lambda_handler(event, context):
     except logs.exceptions.ResourceAlreadyExistsException:
        pass
 
-    response = logs.describe_log_streams(
-        logGroupName=LOG_GROUP,
-        logStreamNamePrefix=LOG_STREAM
-    )
-    
-    if 'uploadSequenceToken' in response['logStreams'][0]:
-        token = response['logStreams'][0]['uploadSequenceToken']
-    else:
-        token = "0"
-        
-    response = logs.put_log_events(
-        logGroupName=LOG_GROUP,
-        logStreamName=LOG_STREAM,
-        logEvents=[{
+    for attempt in range(3):
+        try:
+            response = logs.describe_log_streams(
+                logGroupName=LOG_GROUP,
+                logStreamNamePrefix=LOG_STREAM
+            )
+            
+            if 'uploadSequenceToken' in response['logStreams'][0]:
+                token = response['logStreams'][0]['uploadSequenceToken']
+            else:
+                token = "0"
+                
+            response = logs.put_log_events(
+                logGroupName=LOG_GROUP,
+                logStreamName=LOG_STREAM,
+                logEvents=[{
                 'timestamp': int(round(time.time() * 1000)),
                 'message': json.dumps({
                     'Level': 'INFO',
                     'Src': 'Scanner',
                     'Count': count})
             }],
-        sequenceToken=token
-    )
+                sequenceToken=token
+            )
+        except logs.exceptions.InvalidSequenceTokenException:
+            continue
+        break
 
     for item in items:
         lambda_payload = {
