@@ -1,0 +1,935 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cut 30s video from a live stream'
+Parameters:
+  URLPattern:
+    Description: Pattern used in live stream URL
+    Type: String
+  RecordBucketName:
+    Description: Bucket name to save recording
+    Type: String
+  RecordTableName:
+    Description: DynamoDB Table name for tracking recording
+    Type: String
+  ResultESDomain:
+    Description: ElasticSearch Domain for result store
+    Type: String
+  ResultESEndpoint:
+    Description: ElasticSearch endpoint URL for result store
+    Type: String
+  ResultESIndex:
+    Description: Index name in ElasticSearch
+    Type: String
+  SGEndPoint:
+    Description: Endpoint Name in Sagemaker
+    Type: String
+  CWLogGroup:
+    Description: Cloudwatch Log group
+    Type: String
+  DDBTTL:
+    Description: TTL for each item in DynamoDB
+    Type: String
+Resources:
+  AddVideotoDB:
+    Properties:
+      Code:
+        S3Bucket: bucket
+        S3Key: value
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: RecordTableName
+          LOG_GROUP:
+            Ref: CWLogGroup
+          DDB_TTL:
+            Ref: DDBTTL
+          URL_PATTERN:
+            Ref: URLPattern
+      Handler: app.lambda_handler
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - AddVideotoDBRole
+        - Arn
+      Runtime: python3.8
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Timeout: 10
+      TracingConfig:
+        Mode: Active
+    Type: AWS::Lambda::Function
+  AddVideotoDBRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: RecordTableName
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: RecordTableName
+        PolicyName: AddVideotoDBRolePolicy0
+      - PolicyDocument:
+          Statement:
+          - Sid: PutCWLogsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
+        PolicyName: AddVideotoDBRolePolicy1
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+    Type: AWS::IAM::Role
+  DeleteVideofromDB:
+    Properties:
+      Code:
+        S3Bucket: bucket
+        S3Key: value
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: RecordTableName
+          LOG_GROUP:
+            Ref: CWLogGroup
+      Handler: app.lambda_handler
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - DeleteVideofromDBRole
+        - Arn
+      Runtime: python3.8
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Timeout: 10
+      TracingConfig:
+        Mode: Active
+    Type: AWS::Lambda::Function
+  DeleteVideofromDBRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: RecordTableName
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: RecordTableName
+        PolicyName: DeleteVideofromDBRolePolicy0
+      - PolicyDocument:
+          Statement:
+          - Sid: PutCWLogsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
+        PolicyName: DeleteVideofromDBRolePolicy1
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+    Type: AWS::IAM::Role
+  VideoCutter:
+    Properties:
+      Code:
+        S3Bucket: bucket
+        S3Key: value
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: RecordTableName
+          BUCKET_NAME:
+            Ref: RecordBucketName
+          LOG_GROUP:
+            Ref: CWLogGroup
+      Handler: app.lambda_handler
+      Layers:
+      - Ref: FFMpegd0c5b55264
+      MemorySize: 512
+      ReservedConcurrentExecutions: 100
+      Role:
+        Fn::GetAtt:
+        - VideoCutterRole
+        - Arn
+      Runtime: python3.8
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Timeout: 60
+      TracingConfig:
+        Mode: Active
+    Type: AWS::Lambda::Function
+  VideoCutterEventInvokeConfig:
+    Properties:
+      DestinationConfig:
+        OnFailure:
+          Destination:
+            Fn::GetAtt:
+            - VideoCutterErrorHandling
+            - Arn
+      FunctionName:
+        Ref: VideoCutter
+      Qualifier: $LATEST
+    Type: AWS::Lambda::EventInvokeConfig
+  VideoCutterRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action: lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+              - VideoCutterErrorHandling
+              - Arn
+        PolicyName: VideoCutterEventInvokeConfigOnFailureLambdaPolicy
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - s3:GetObject
+            - s3:ListBucket
+            - s3:GetBucketLocation
+            - s3:GetObjectVersion
+            - s3:PutObject
+            - s3:PutObjectAcl
+            - s3:GetLifecycleConfiguration
+            - s3:PutLifecycleConfiguration
+            - s3:DeleteObject
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:s3:::${bucketName}
+              - bucketName:
+                  Ref: RecordBucketName
+            - Fn::Sub:
+              - arn:${AWS::Partition}:s3:::${bucketName}/*
+              - bucketName:
+                  Ref: RecordBucketName
+        PolicyName: VideoCutterRolePolicy0
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: RecordTableName
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: RecordTableName
+        PolicyName: VideoCutterRolePolicy1
+      - PolicyDocument:
+          Statement:
+          - Sid: PutCWLogsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
+        PolicyName: VideoCutterRolePolicy2
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+    Type: AWS::IAM::Role
+  Scanner:
+    Properties:
+      Code:
+        S3Bucket: bucket
+        S3Key: value
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: RecordTableName
+          BUCKET_NAME:
+            Ref: RecordBucketName
+          VIDEO_CUTTER_NAME:
+            Ref: VideoCutter
+          LOG_GROUP:
+            Ref: CWLogGroup
+          DDB_TTL:
+            Ref: DDBTTL
+      Handler: app.lambda_handler
+      MemorySize: 128
+      ReservedConcurrentExecutions: 1
+      Role:
+        Fn::GetAtt:
+        - ScannerRole
+        - Arn
+      Runtime: python3.8
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Timeout: 180
+      TracingConfig:
+        Mode: Active
+    Type: AWS::Lambda::Function
+  ScannerEventInvokeConfig:
+    Properties:
+      DestinationConfig: {}
+      FunctionName:
+        Ref: Scanner
+      MaximumEventAgeInSeconds: 60
+      MaximumRetryAttempts: 0
+      Qualifier: $LATEST
+    Type: AWS::Lambda::EventInvokeConfig
+  ScannerRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: RecordTableName
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: RecordTableName
+        PolicyName: ScannerRolePolicy0
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              Fn::Sub:
+              - arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${functionName}*
+              - functionName:
+                  Ref: VideoCutter
+        PolicyName: ScannerRolePolicy1
+      - PolicyDocument:
+          Statement:
+          - Sid: PutCWLogsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
+        PolicyName: ScannerRolePolicy2
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+    Type: AWS::IAM::Role
+  ScannerCWSchedule:
+    Properties:
+      Description: Cron for scanner
+      Name: Scanner
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - Scanner
+          - Arn
+        Id: ScannerCWScheduleLambdaTarget
+    Type: AWS::Events::Rule
+  ScannerCWSchedulePermission:
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: Scanner
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - ScannerCWSchedule
+        - Arn
+    Type: AWS::Lambda::Permission
+  HealthChecker:
+    Properties:
+      Code:
+        S3Bucket: bucket
+        S3Key: value
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: RecordTableName
+          LOG_GROUP:
+            Ref: CWLogGroup
+      Handler: app.lambda_handler
+      Layers:
+      - Ref: FFMpegd0c5b55264
+      MemorySize: 768
+      ReservedConcurrentExecutions: 1
+      Role:
+        Fn::GetAtt:
+        - HealthCheckerRole
+        - Arn
+      Runtime: python3.8
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Timeout: 180
+      TracingConfig:
+        Mode: Active
+    Type: AWS::Lambda::Function
+  HealthCheckerEventInvokeConfig:
+    Properties:
+      DestinationConfig: {}
+      FunctionName:
+        Ref: HealthChecker
+      MaximumEventAgeInSeconds: 60
+      MaximumRetryAttempts: 0
+      Qualifier: $LATEST
+    Type: AWS::Lambda::EventInvokeConfig
+  HealthCheckerRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: RecordTableName
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: RecordTableName
+        PolicyName: HealthCheckerRolePolicy0
+      - PolicyDocument:
+          Statement:
+          - Sid: PutCWLogsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
+        PolicyName: HealthCheckerRolePolicy1
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+    Type: AWS::IAM::Role
+  HealthCheckerCWSchedule:
+    Properties:
+      Description: Cron for health check
+      Name: HealthChecker
+      ScheduleExpression: rate(3 minutes)
+      State: ENABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - HealthChecker
+          - Arn
+        Id: HealthCheckerCWScheduleLambdaTarget
+    Type: AWS::Events::Rule
+  HealthCheckerCWSchedulePermission:
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: HealthChecker
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - HealthCheckerCWSchedule
+        - Arn
+    Type: AWS::Lambda::Permission
+  SGTrigger:
+    Properties:
+      Code:
+        S3Bucket: bucket
+        S3Key: value
+      Environment:
+        Variables:
+          BUCKET_NAME:
+            Ref: RecordBucketName
+          ES_NAME:
+            Ref: ResultESDomain
+          ES_INDEX:
+            Ref: ResultESIndex
+          ES_ENDPOINT:
+            Ref: ResultESEndpoint
+          SG_ENDPOINT:
+            Ref: SGEndPoint
+          LOG_GROUP:
+            Ref: CWLogGroup
+      Handler: app.lambda_handler
+      MemorySize: 256
+      ReservedConcurrentExecutions: 112
+      Role:
+        Fn::GetAtt:
+        - SGTriggerRole
+        - Arn
+      Runtime: python3.8
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Timeout: 120
+      TracingConfig:
+        Mode: Active
+    Type: AWS::Lambda::Function
+  SGTriggerRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - s3:GetObject
+            - s3:ListBucket
+            - s3:GetBucketLocation
+            - s3:GetObjectVersion
+            - s3:GetLifecycleConfiguration
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:s3:::${bucketName}
+              - bucketName:
+                  Ref: RecordBucketName
+            - Fn::Sub:
+              - arn:${AWS::Partition}:s3:::${bucketName}/*
+              - bucketName:
+                  Ref: RecordBucketName
+        PolicyName: SGTriggerRolePolicy0
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - es:ESHttpPost
+            - es:ESHttpPut
+            Effect: Allow
+            Resource:
+              Fn::Sub:
+              - arn:${AWS::Partition}:es:${AWS::Region}:${AWS::AccountId}:domain/${domainName}/*
+              - domainName:
+                  Ref: ResultESDomain
+        PolicyName: SGTriggerRolePolicy1
+      - PolicyDocument:
+          Statement:
+          - Sid: SagemakerInvokeEndpointPolicy
+            Effect: Allow
+            Action:
+            - sagemaker:InvokeEndpoint
+            - sagemaker:ListEndpoints
+            Resource: '*'
+        PolicyName: SGTriggerRolePolicy2
+      - PolicyDocument:
+          Statement:
+          - Sid: PutCWLogsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
+        PolicyName: SGTriggerRolePolicy3
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+    Type: AWS::IAM::Role
+  QueuedInference:
+    Properties:
+      Code:
+        S3Bucket: bucket
+        S3Key: value
+      Environment:
+        Variables:
+          BUCKET_NAME:
+            Ref: RecordBucketName
+          ES_NAME:
+            Ref: ResultESDomain
+          ES_INDEX:
+            Ref: ResultESIndex
+          ES_ENDPOINT:
+            Ref: ResultESEndpoint
+          SG_ENDPOINT:
+            Ref: SGEndPoint
+          LOG_GROUP:
+            Ref: CWLogGroup
+      Handler: app.lambda_handler
+      MemorySize: 256
+      ReservedConcurrentExecutions: 60
+      Role:
+        Fn::GetAtt:
+        - QueuedInferenceRole
+        - Arn
+      Runtime: python3.8
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Timeout: 120
+      TracingConfig:
+        Mode: Active
+    Type: AWS::Lambda::Function
+  QueuedInferenceRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - s3:GetObject
+            - s3:ListBucket
+            - s3:GetBucketLocation
+            - s3:GetObjectVersion
+            - s3:GetLifecycleConfiguration
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:s3:::${bucketName}
+              - bucketName:
+                  Ref: RecordBucketName
+            - Fn::Sub:
+              - arn:${AWS::Partition}:s3:::${bucketName}/*
+              - bucketName:
+                  Ref: RecordBucketName
+        PolicyName: QueuedInferenceRolePolicy0
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - es:ESHttpPost
+            - es:ESHttpPut
+            Effect: Allow
+            Resource:
+              Fn::Sub:
+              - arn:${AWS::Partition}:es:${AWS::Region}:${AWS::AccountId}:domain/${domainName}/*
+              - domainName:
+                  Ref: ResultESDomain
+        PolicyName: QueuedInferenceRolePolicy1
+      - PolicyDocument:
+          Statement:
+          - Sid: SagemakerInvokeEndpointPolicy
+            Effect: Allow
+            Action:
+            - sagemaker:InvokeEndpoint
+            - sagemaker:ListEndpoints
+            Resource: '*'
+        PolicyName: QueuedInferenceRolePolicy2
+      - PolicyDocument:
+          Statement:
+          - Sid: PutCWLogsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
+        PolicyName: QueuedInferenceRolePolicy3
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+    Type: AWS::IAM::Role
+  VideoCutterErrorHandling:
+    Properties:
+      Code:
+        S3Bucket: bucket
+        S3Key: value
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: RecordTableName
+          LOG_GROUP:
+            Ref: CWLogGroup
+      Handler: app.lambda_handler
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - VideoCutterErrorHandlingRole
+        - Arn
+      Runtime: python3.8
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Timeout: 10
+      TracingConfig:
+        Mode: Active
+    Type: AWS::Lambda::Function
+  VideoCutterErrorHandlingRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: RecordTableName
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: RecordTableName
+        PolicyName: VideoCutterErrorHandlingRolePolicy0
+      - PolicyDocument:
+          Statement:
+          - Sid: PutCWLogsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
+        PolicyName: VideoCutterErrorHandlingRolePolicy1
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+    Type: AWS::IAM::Role
+  CircuitBreaker:
+    Properties:
+      Code:
+        S3Bucket: bucket
+        S3Key: value
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: RecordTableName
+          LOG_GROUP:
+            Ref: CWLogGroup
+      Handler: app.lambda_handler
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - CircuitBreakerRole
+        - Arn
+      Runtime: python3.8
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Timeout: 10
+      TracingConfig:
+        Mode: Active
+    Type: AWS::Lambda::Function
+  CircuitBreakerRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: RecordTableName
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: RecordTableName
+        PolicyName: CircuitBreakerRolePolicy0
+      - PolicyDocument:
+          Statement:
+          - Sid: PutCWEventsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
+        PolicyName: CircuitBreakerRolePolicy1
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+    Type: AWS::IAM::Role
+  FFMpegd0c5b55264:
+    DeletionPolicy: Retain
+    Properties:
+      CompatibleRuntimes:
+      - python3.8
+      Content:
+        S3Bucket: bucket
+        S3Key: value
+      LayerName: FFMpeg
+    Type: AWS::Lambda::LayerVersion

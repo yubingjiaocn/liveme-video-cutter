@@ -100,7 +100,7 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.8
       MemorySize: 512
-      Timeout: 50
+      Timeout: 60
       Tracing: Active
       Layers:
         - !Ref FFMpeg
