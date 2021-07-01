@@ -16,21 +16,29 @@ LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Error')
 
 def lambda_handler(event, context):
     ids = []
-    counter = 0
-    items = table.scan(ProjectionExpression='#i',
-                      ExpressionAttributeNames={'#i': 'id'},
-                      FilterExpression=Attr('available').eq(1),
-                      Limit=50)
+    count = 0
 
-    for item in items:
+    response = table.scan(ProjectionExpression='#i',
+                      ExpressionAttributeNames={'#i': 'id'},
+                      FilterExpression=Attr('available').eq(1)
+    )
+    data = response['Items']
+
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        data.extend(response['Items'])
+        count += len(data)
+        if count > 50:
+            break
+
+    for item in data:
         table.update_item(Key={'id': item["id"]},
                       UpdateExpression='SET available = :val1, delete_timestamp = :val3, delete_method = :val4',
                       ExpressionAttributeValues={':val1': 0, ':val3': int(time.time()),
                                                  ':val4': 'CIRCUITBREAKER'})
-        ids.append(id)        
-        counter += 1                                 
+        ids.extend(item["id"])        
         
-    print(f"Circuit breaker activated, deleted {counter} live streams")
+    print("Circuit breaker activated, deleted " + str(count) + " live streams")
     print("Deleted IDs:")
     print(json.dumps(ids))
 
@@ -60,7 +68,7 @@ def lambda_handler(event, context):
                         'message': json.dumps({
                             'Level': 'WARN',
                             'Src': 'CircuitBreaker',
-                            'DeleteCount': counter,
+                            'Deleted': count,
                             'Result': 'DELETED'})
                     }
                 ],

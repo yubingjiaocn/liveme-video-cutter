@@ -81,13 +81,19 @@ def lambda_handler(event, context):
     logcontent = []
     deletecount = 0
     timestamp = int(time.time())
-    resp = table.scan(
+    response = table.scan(
         FilterExpression=Attr('available').eq(1),
-        ProjectionExpression="id, #u",
-        ExpressionAttributeNames={"#u": "url"}
+        ProjectionExpression="id, #u, #d",
+        ExpressionAttributeNames={"#u": "url", "#d": "duration"}
     )
-    items = resp['Items']
-    count = len(items)
+    data = response['Items']
+
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        data.extend(response['Items'])
+
+    count = len(data)
+
     print("Checking " + str(count) + " live stream")
 
     threads = []
@@ -99,7 +105,7 @@ def lambda_handler(event, context):
             'Count': count})
     })
 
-    for item in items:
+    for item in data:
         print("Start checking " + item["id"])
         try:
             t = threading.Thread(target=check_livestream,

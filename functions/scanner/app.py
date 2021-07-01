@@ -22,14 +22,19 @@ TTL = int(os.environ.get('DDB_TTL'))
 
 def lambda_handler(event, context):
     timestamp = int(time.time())
-    resp = table.scan(
+
+    response = table.scan(
         FilterExpression=Attr('available').eq(1),
         ProjectionExpression="id, #u, #d",
         ExpressionAttributeNames={"#u": "url", "#d": "duration"}
     )
+    data = response['Items']
 
-    items = resp['Items']
-    count = str(len(items))
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        data.extend(response['Items'])
+
+    count = len(data)
 
     try:
        logs.create_log_stream(logGroupName=LOG_GROUP, logStreamName=LOG_STREAM)
@@ -64,7 +69,7 @@ def lambda_handler(event, context):
             continue
         break
 
-    for item in items:
+    for item in data:
         lambda_payload = {
             "id": item["id"],
             "url": item["url"],
