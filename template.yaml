@@ -30,6 +30,9 @@ Parameters:
   DDBTTL:
     Description: TTL for each item in DynamoDB
     Type: String
+  CircuitBreakerThreshold:
+    Description: Maxinum number of live stream before delete
+    Type: String  
 Resources:
 
   FFMpeg:
@@ -329,12 +332,13 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.8
       MemorySize: 128
-      Timeout: 10
+      Timeout: 60
       Tracing: Active
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
           LOG_GROUP: !Ref CWLogGroup
+          CB_THRESHOLD: !Ref CircuitBreakerThreshold
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName   
