@@ -29,8 +29,8 @@ def lambda_handler(event, context):
     while 'LastEvaluatedKey' in response:
         response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
         data.extend(response['Items'])
-        count += len(data)
-
+        
+    count = len(data)
     deletecount = count - THRESHOLD 
 
     for item in data:
@@ -38,12 +38,12 @@ def lambda_handler(event, context):
                       UpdateExpression='SET available = :val1, delete_timestamp = :val3, delete_method = :val4',
                       ExpressionAttributeValues={':val1': 0, ':val3': int(time.time()),
                                                  ':val4': 'CIRCUITBREAKER'})
-        ids.extend(item["id"]) 
+        ids.append(item["id"]) 
         deletecount -= 1
         if deletecount <= 0:
             break       
         
-    print("Circuit breaker activated, deleted " + str(deletecount) + " live streams")
+    print("Circuit breaker activated, deleted " + str(count - THRESHOLD) + " live streams")
     print("Deleted IDs:")
     print(json.dumps(ids))
 
