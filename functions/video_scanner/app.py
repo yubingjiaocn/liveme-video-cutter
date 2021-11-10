@@ -8,6 +8,8 @@ from boto3.dynamodb.conditions import Key, Attr
 tablename = os.environ.get('TABLE_NAME')
 bucketname = os.environ.get('BUCKET_NAME')
 cuttername = os.environ.get('VIDEO_CUTTER_NAME')
+task_name = os.environ.get('TASK_NAME')
+task_name = str(task_name)
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(tablename)
@@ -20,11 +22,12 @@ LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Access')
 
 TTL = int(os.environ.get('DDB_TTL'))
 
+
 def lambda_handler(event, context):
     timestamp = int(time.time())
 
     response = table.scan(
-        FilterExpression=Attr('available').eq(1),
+        FilterExpression=Attr('available').eq(1) & Attr(task_name).eq(1),
         ProjectionExpression="id, #u, #d",
         ExpressionAttributeNames={"#u": "url", "#d": "duration"}
     )
@@ -35,47 +38,50 @@ def lambda_handler(event, context):
         data.extend(response['Items'])
 
     count = len(data)
-
+    print(f"video cutter length: {count}")
     try:
-       logs.create_log_stream(logGroupName=LOG_GROUP, logStreamName=LOG_STREAM)
+        logs.create_log_stream(logGroupName=LOG_GROUP, logStreamName=LOG_STREAM)
     except logs.exceptions.ResourceAlreadyExistsException:
-       pass
+        pass
+    try:
+        for attempt in range(3):
+            try:
+                response = logs.describe_log_streams(
+                    logGroupName=LOG_GROUP,
+                    logStreamNamePrefix=LOG_STREAM
+                )
 
-    for attempt in range(3):
-        try:
-            response = logs.describe_log_streams(
-                logGroupName=LOG_GROUP,
-                logStreamNamePrefix=LOG_STREAM
-            )
-            
-            if 'uploadSequenceToken' in response['logStreams'][0]:
-                token = response['logStreams'][0]['uploadSequenceToken']
-            else:
-                token = "0"
-                
-            response = logs.put_log_events(
-                logGroupName=LOG_GROUP,
-                logStreamName=LOG_STREAM,
-                logEvents=[{
-                'timestamp': int(round(time.time() * 1000)),
-                'message': json.dumps({
-                    'Level': 'INFO',
-                    'Src': 'Scanner',
-                    'Count': count})
-            }],
-                sequenceToken=token
-            )
-        except logs.exceptions.InvalidSequenceTokenException:
-            continue
-        break
+                if 'uploadSequenceToken' in response['logStreams'][0]:
+                    token = response['logStreams'][0]['uploadSequenceToken']
+                else:
+                    token = "0"
 
+                response = logs.put_log_events(
+                    logGroupName=LOG_GROUP,
+                    logStreamName=LOG_STREAM,
+                    logEvents=[{
+                        'timestamp': int(round(time.time() * 1000)),
+                        'message': json.dumps({
+                            'Level': 'INFO',
+                            'Src': 'Video_Scanner',
+                            'Count': count})
+                    }],
+                    sequenceToken=token
+                )
+            except logs.exceptions.InvalidSequenceTokenException:
+                continue
+            break
+    except:
+        pass
     for item in data:
         lambda_payload = {
             "id": item["id"],
             "url": item["url"],
             "duration": str(int(item["duration"])),
             "bucket": bucketname,
-            "prefix": ''
+            "prefix": '',
+            "task_name": task_name
+
         }
 
         lambda_client.invoke(FunctionName=cuttername,

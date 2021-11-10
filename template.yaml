@@ -3,6 +3,15 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   Cut 30s video from a live stream
 Parameters:
+  TaskDict:
+    Description: List of task
+    Type: String
+  Task_Save_Type:
+    Description: Task Save Type
+    Type: String
+  AudioSGEndPoint:
+    Description: Endpoint Name in Audio Sagemaker
+    Type: String
   URLPattern:
     Description: Pattern used in live stream URL
     Type: String
@@ -21,8 +30,8 @@ Parameters:
   ResultESIndex:
     Description: Index name in ElasticSearch
     Type: String  
-  SGEndPoint:
-    Description: Endpoint Name in Sagemaker
+  VideoSGEndPoint:
+    Description: Endpoint Name in Video Sagemaker
     Type: String  
   CWLogGroup:
     Description: Cloudwatch Log group 
@@ -57,6 +66,7 @@ Resources:
           LOG_GROUP: !Ref CWLogGroup
           DDB_TTL: !Ref DDBTTL
           URL_PATTERN: !Ref URLPattern
+          TASK_DICT: !Ref TaskDict
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName   
@@ -109,7 +119,7 @@ Resources:
         - !Ref FFMpeg
       EventInvokeConfig:
         MaximumRetryAttempts: 0
-      ReservedConcurrentExecutions: 100  
+      ReservedConcurrentExecutions: 1500
       EventInvokeConfig:
         DestinationConfig:
           OnFailure:
@@ -119,7 +129,8 @@ Resources:
         Variables:
           TABLE_NAME: !Ref RecordTableName
           BUCKET_NAME: !Ref RecordBucketName
-          LOG_GROUP: !Ref CWLogGroup  
+          LOG_GROUP: !Ref CWLogGroup
+          TASK_SAVE_TYPE: !Ref Task_Save_Type
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref RecordBucketName
@@ -135,13 +146,13 @@ Resources:
             - logs:DescribeLogStreams
             Resource: '*'            
 
-  Scanner:
+  VideoScanner:
     Type: AWS::Serverless::Function 
     Properties:
-      CodeUri: functions/scanner/
+      CodeUri: functions/video_scanner/
       Handler: app.lambda_handler
       Runtime: python3.8
-      MemorySize: 128
+      MemorySize: 512
       Timeout: 180
       EventInvokeConfig:
         MaximumEventAgeInSeconds: 60
@@ -152,8 +163,8 @@ Resources:
         CWSchedule:
           Type: Schedule
           Properties:
-            Schedule: 'rate(5 minutes)'
-            Name: Scanner
+            Schedule: 'rate(2 minutes)'
+            Name: VideoScanner
             Description: Cron for scanner
             Enabled: true
       Environment:
@@ -163,6 +174,7 @@ Resources:
           VIDEO_CUTTER_NAME: !Ref VideoCutter
           LOG_GROUP: !Ref CWLogGroup
           DDB_TTL: !Ref DDBTTL
+          TASK_NAME: 'task_video'
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RecordTableName
@@ -176,7 +188,53 @@ Resources:
             - logs:CreateLogStream
             - logs:PutLogEvents
             - logs:DescribeLogStreams
-            Resource: '*'     
+            Resource: '*'
+
+
+  AudioScanner:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/audio_scanner/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 512
+      Timeout: 60
+      EventInvokeConfig:
+        MaximumEventAgeInSeconds: 60
+        MaximumRetryAttempts: 0
+      ReservedConcurrentExecutions: 1
+      Tracing: Active
+      Events:
+        CWSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: 'rate(1 minute)'
+            Name: AudioScanner
+            Description: Cron for scanner
+            Enabled: true
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RecordTableName
+          BUCKET_NAME: !Ref RecordBucketName
+          VIDEO_CUTTER_NAME: !Ref VideoCutter
+          LOG_GROUP: !Ref CWLogGroup
+          DDB_TTL: !Ref DDBTTL
+          TASK_NAME: 'task_audio'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecordTableName
+        - LambdaInvokePolicy:
+            FunctionName: !Ref VideoCutter
+        - Statement:
+          - Sid: PutCWLogsPolicy
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: '*'
+
 
   HealthChecker:
     Type: AWS::Serverless::Function 
@@ -218,10 +276,10 @@ Resources:
             - logs:DescribeLogStreams
             Resource: '*'     
 
-  SGTrigger:
+  VideoSGTrigger:
     Type: AWS::Serverless::Function 
     Properties:
-      CodeUri: functions/s3_sg_trigger/
+      CodeUri: functions/s3_sg_trigger_video/
       Handler: app.lambda_handler
       Runtime: python3.8
       MemorySize: 256
@@ -234,7 +292,7 @@ Resources:
           ES_NAME: !Ref ResultESDomain
           ES_INDEX: !Ref ResultESIndex
           ES_ENDPOINT: !Ref ResultESEndpoint
-          SG_ENDPOINT: !Ref SGEndPoint
+          SG_ENDPOINT: !Ref VideoSGEndPoint
           LOG_GROUP: !Ref CWLogGroup
       Policies:
         - S3ReadPolicy:
@@ -258,23 +316,25 @@ Resources:
             - logs:DescribeLogStreams
             Resource: '*'    
 
-  QueuedInference:
-    Type: AWS::Serverless::Function 
+
+
+  AudioSGTrigger:
+    Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/sqs_sg_trigger/
+      CodeUri: functions/s3_sg_trigger_audio/
       Handler: app.lambda_handler
       Runtime: python3.8
-      MemorySize: 256
+      MemorySize: 128
       Timeout: 120
       Tracing: Active
-      ReservedConcurrentExecutions: 60
+      ReservedConcurrentExecutions: 42
       Environment:
-        Variables:     
-          BUCKET_NAME: !Ref RecordBucketName  
+        Variables:
+          BUCKET_NAME: !Ref RecordBucketName
           ES_NAME: !Ref ResultESDomain
           ES_INDEX: !Ref ResultESIndex
           ES_ENDPOINT: !Ref ResultESEndpoint
-          SG_ENDPOINT: !Ref SGEndPoint
+          SG_ENDPOINT: !Ref AudioSGEndPoint
           LOG_GROUP: !Ref CWLogGroup
       Policies:
         - S3ReadPolicy:
@@ -296,7 +356,46 @@ Resources:
             - logs:CreateLogStream
             - logs:PutLogEvents
             - logs:DescribeLogStreams
-            Resource: '*' 
+            Resource: '*'
+#  QueuedInference:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      CodeUri: functions/sqs_sg_trigger/
+#      Handler: app.lambda_handler
+#      Runtime: python3.8
+#      MemorySize: 256
+#      Timeout: 120
+#      Tracing: Active
+#      ReservedConcurrentExecutions: 60
+#      Environment:
+#        Variables:
+#          BUCKET_NAME: !Ref RecordBucketName
+#          ES_NAME: !Ref ResultESDomain
+#          ES_INDEX: !Ref ResultESIndex
+#          ES_ENDPOINT: !Ref ResultESEndpoint
+#          SG_ENDPOINT: !Ref SGEndPoint
+#          LOG_GROUP: !Ref CWLogGroup
+#      Policies:
+#        - S3ReadPolicy:
+#            BucketName: !Ref RecordBucketName
+#        - ElasticsearchHttpPostPolicy:
+#            DomainName: !Ref ResultESDomain
+#        - Statement:
+#          - Sid: SagemakerInvokeEndpointPolicy
+#            Effect: Allow
+#            Action:
+#            - sagemaker:InvokeEndpoint
+#            - sagemaker:ListEndpoints
+#            Resource: '*'
+#        - Statement:
+#          - Sid: PutCWLogsPolicy
+#            Effect: Allow
+#            Action:
+#            - logs:CreateLogGroup
+#            - logs:CreateLogStream
+#            - logs:PutLogEvents
+#            - logs:DescribeLogStreams
+#            Resource: '*'
 
   VideoCutterErrorHandling:
     Type: AWS::Serverless::Function 

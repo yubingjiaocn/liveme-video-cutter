@@ -16,7 +16,6 @@ LOG_STREAM = '{}-{}'.format(time.strftime('%Y-%m-%d'), 'Access')
 
 
 def lambda_handler(event, context):
-
     id = event['id']
     if id == None:
         return {
@@ -27,11 +26,11 @@ def lambda_handler(event, context):
 
     response = table.query(KeyConditionExpression=Key('id').eq(str(id)))
     if len(response['Items']) == 0:
-       return {
+        return {
             "statusCode": 400,
             "body": json.dumps({'message': 'ID not exists'})
-        } 
-        
+        }
+
     if 'delete_method' in response['Items'][0].keys():
         delete_method = response['Items'][0]['delete_method'] + "+API"
         delete_timestamp = response['Items'][0]['delete_timestamp']
@@ -42,8 +41,8 @@ def lambda_handler(event, context):
     table.update_item(Key={'id': str(id)},
                       UpdateExpression='SET available = :val1, delete_timestamp = :val2, delete_method = :val3',
                       ExpressionAttributeValues={':val1': 0,
-                      ':val2': delete_timestamp,
-                      ':val3': delete_method})
+                                                 ':val2': delete_timestamp,
+                                                 ':val3': delete_method})
 
     try:
         logs.create_log_stream(logGroupName=LOG_GROUP,
