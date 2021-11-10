@@ -6,7 +6,7 @@ Parameters:
   TaskDict:
     Description: List of task
     Type: String
-  Task_Save_Type:
+  TaskSaveType:
     Description: Task Save Type
     Type: String
   AudioSGEndPoint:
@@ -130,7 +130,7 @@ Resources:
           TABLE_NAME: !Ref RecordTableName
           BUCKET_NAME: !Ref RecordBucketName
           LOG_GROUP: !Ref CWLogGroup
-          TASK_SAVE_TYPE: !Ref Task_Save_Type
+          TASK_SAVE_TYPE: !Ref TaskSaveType
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref RecordBucketName
