@@ -49,14 +49,14 @@ Resources:
     Properties:
       ContentUri: layers/ffmpeg
       CompatibleRuntimes:
-        - python3.8
+        - python3.9
 
   AddVideotoDB:
     Type: AWS::Serverless::Function 
     Properties:
       CodeUri: functions/add_video/
       Handler: app.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 128
       Timeout: 10
       Tracing: Active
@@ -85,7 +85,7 @@ Resources:
     Properties:
       CodeUri: functions/delete_video/
       Handler: app.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 128
       Timeout: 10
       Tracing: Active
@@ -111,7 +111,7 @@ Resources:
     Properties:
       CodeUri: functions/video_cutter/
       Handler: app.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 512
       Timeout: 60
       Tracing: Active
@@ -151,7 +151,7 @@ Resources:
     Properties:
       CodeUri: functions/video_scanner/
       Handler: app.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 512
       Timeout: 180
       EventInvokeConfig:
@@ -196,7 +196,7 @@ Resources:
     Properties:
       CodeUri: functions/audio_scanner/
       Handler: app.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 512
       Timeout: 60
       EventInvokeConfig:
@@ -241,7 +241,7 @@ Resources:
     Properties:
       CodeUri: functions/healthchecker/
       Handler: app.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 768
       Timeout: 180
       Tracing: Active
@@ -281,7 +281,7 @@ Resources:
     Properties:
       CodeUri: functions/s3_sg_trigger_video/
       Handler: app.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 256
       Timeout: 120
       Tracing: Active
@@ -323,7 +323,7 @@ Resources:
     Properties:
       CodeUri: functions/s3_sg_trigger_audio/
       Handler: app.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 128
       Timeout: 120
       Tracing: Active
@@ -362,7 +362,7 @@ Resources:
 #    Properties:
 #      CodeUri: functions/sqs_sg_trigger/
 #      Handler: app.lambda_handler
-#      Runtime: python3.8
+#      Runtime: python3.9
 #      MemorySize: 256
 #      Timeout: 120
 #      Tracing: Active
@@ -402,7 +402,7 @@ Resources:
     Properties:
       CodeUri: functions/video_cutter_error/
       Handler: app.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 128
       Timeout: 10
       Tracing: Active
@@ -429,7 +429,7 @@ Resources:
     Properties:
       CodeUri: functions/circuit_breaker/
       Handler: app.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 128
       Timeout: 60
       Tracing: Active
