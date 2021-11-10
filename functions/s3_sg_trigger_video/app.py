@@ -46,7 +46,7 @@ def lambda_handler(event, context):
         }
     }
     try:
-        query_result = es.query_one(query_body, source=['uid', 'online_tag'])
+        query_result = es.query_one(query_body)
         if len(query_result['data']) > 0:
             res_source = query_result['data'][0]['_source']
             if result['score'] == 'is_dancing':
@@ -57,7 +57,7 @@ def lambda_handler(event, context):
                 res = remove_onlineTag_dance(res_source)
             else:
                 print("unrecognized score = {}".format(result['score']))
-            update_result = es.update_one_local({"doc": res}, id=query_result['data'][0]['_id'])
+            update_result = es.update_one_global(query = res, id=query_result['data'][0]['_id'])
     except:
         traceback.print_exc()
 

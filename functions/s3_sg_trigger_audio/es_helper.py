@@ -25,13 +25,21 @@ class EsBase(object):
         resp["total"] = result.get("hits", {}).get("total", 0)
         return resp
 
-    def query_one(self, query, source, doc_type='online'):
+    def query_one_by_source(self, query, source, doc_type='online'):
         """
         查找某一条操作
         :param query:
         :return:
         """
         result = self.es.search(index=self.index, doc_type=doc_type, body=query, _source=source)
+        return self.parse_query_result(result)
+    def query_one(self, query, doc_type='online'):
+        """
+        查找某一条操作
+        :param query:
+        :return:
+        """
+        result = self.es.search(index=self.index, doc_type=doc_type, body=query)
         return self.parse_query_result(result)
 
     def insert_one(self, query, doc_type='online'):
