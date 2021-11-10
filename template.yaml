@@ -5,9 +5,9 @@ Description: >
 Globals:
   Function:
     Tags:
-      ProductOwner: yangfei3@joyme.sg
-      OpsOwner: zhangye3@cmcm.com
-      owners: weishubo@joyme.sg
+      ProductOwner: 'yangfei3@joyme.sg'
+      OpsOwner: 'zhangye3@cmcm.com'
+      owners: 'weishubo@joyme.sg'
 
 Parameters:
   TaskDict:
@@ -293,6 +293,12 @@ Resources:
       Timeout: 120
       Tracing: Active
       ReservedConcurrentExecutions: 112
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-03fb8687c7e9f048c
+        SubnetIds:
+          - subnet-a4d62efe
+          - subnet-1ee4cf7b
       Environment:
         Variables:     
           BUCKET_NAME: !Ref RecordBucketName  
@@ -302,6 +308,7 @@ Resources:
           SG_ENDPOINT: !Ref VideoSGEndPoint
           LOG_GROUP: !Ref CWLogGroup
       Policies:
+        - VPCAccessPolicy: {}
         - S3ReadPolicy:
             BucketName: !Ref RecordBucketName
         - ElasticsearchHttpPostPolicy:
@@ -335,6 +342,12 @@ Resources:
       Timeout: 120
       Tracing: Active
       ReservedConcurrentExecutions: 42
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-03fb8687c7e9f048c
+        SubnetIds:
+          - subnet-a4d62efe
+          - subnet-1ee4cf7b
       Environment:
         Variables:
           BUCKET_NAME: !Ref RecordBucketName
@@ -344,6 +357,7 @@ Resources:
           SG_ENDPOINT: !Ref AudioSGEndPoint
           LOG_GROUP: !Ref CWLogGroup
       Policies:
+        - VPCAccessPolicy: {}
         - S3ReadPolicy:
             BucketName: !Ref RecordBucketName
         - ElasticsearchHttpPostPolicy:

@@ -46,13 +46,31 @@ def lambda_handler(event, context):
     result['time'] = video_uri.split('.')[0].split('_')[1]
     end_time = int(time.time() * 1000)
     print("inference time: ", end_time - start_time, result, type(result))
-
     print (result, type(result))
+    query_body = {
+        "query": {
+            "match": {
+                "uid": uid
+            }
+        }
+    }
     try:
-        print("insert es")
-        # es.index(index=es_index, doc_type="_doc", body=result, id=uid)
+        query_result = es.query_one(query_body)
+        if len(query_result['data']) > 0:
+            res_source = query_result['data'][0]['_source']
+            if result['label'] == 'Music':
+                print("add audio tag for uid = {}".format(uid))
+                res = add_onlineTag_audio(res_source)
+            elif result['label'] != 'Music':
+                print("remove audio tag for uid = {}".format(uid))
+                res = remove_onlineTag_audio(res_source)
+            else:
+                print("unrecognized score = {}".format(result['score']))
+            res['online_audio'] = result['label']
+            update_result = es.update_one_global(query=res, id=query_result['data'][0]['_id'])
+            print("update_result", query_result, result, update_result )
     except:
-        pass
+        traceback.print_exc()
 
     return {
         "statusCode": 200
