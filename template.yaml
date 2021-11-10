@@ -2,6 +2,13 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   Cut 30s video from a live stream
+Globals:
+  Function:
+    Tags:
+      ProductOwner: yangfei3@joyme.sg
+      OpsOwner: zhangye3@cmcm.com
+      owners: weishubo@joyme.sg
+
 Parameters:
   TaskDict:
     Description: List of task
