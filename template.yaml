@@ -66,7 +66,7 @@ Resources:
       Runtime: python3.9
       MemorySize: 128
       Timeout: 10
-      Tracing: Active
+      Tracing: PassThrough
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
@@ -95,7 +95,7 @@ Resources:
       Runtime: python3.9
       MemorySize: 128
       Timeout: 10
-      Tracing: Active
+      Tracing: PassThrough
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
@@ -121,7 +121,7 @@ Resources:
       Runtime: python3.9
       MemorySize: 512
       Timeout: 60
-      Tracing: Active
+      Tracing: PassThrough
       Layers:
         - !Ref FFMpeg
       EventInvokeConfig:
@@ -165,7 +165,7 @@ Resources:
         MaximumEventAgeInSeconds: 60
         MaximumRetryAttempts: 0
       ReservedConcurrentExecutions: 1   
-      Tracing: Active
+      Tracing: PassThrough
       Events:
         CWSchedule:
           Type: Schedule
@@ -210,7 +210,7 @@ Resources:
         MaximumEventAgeInSeconds: 60
         MaximumRetryAttempts: 0
       ReservedConcurrentExecutions: 1
-      Tracing: Active
+      Tracing: PassThrough
       Events:
         CWSchedule:
           Type: Schedule
@@ -251,7 +251,7 @@ Resources:
       Runtime: python3.9
       MemorySize: 768
       Timeout: 180
-      Tracing: Active
+      Tracing: PassThrough
       EventInvokeConfig:
         MaximumEventAgeInSeconds: 60
         MaximumRetryAttempts: 0
@@ -291,7 +291,7 @@ Resources:
       Runtime: python3.9
       MemorySize: 256
       Timeout: 120
-      Tracing: Active
+      Tracing: PassThrough
       ReservedConcurrentExecutions: 112
       VpcConfig:
         SecurityGroupIds:
@@ -340,7 +340,7 @@ Resources:
       Runtime: python3.9
       MemorySize: 128
       Timeout: 120
-      Tracing: Active
+      Tracing: PassThrough
       ReservedConcurrentExecutions: 42
       VpcConfig:
         SecurityGroupIds:
@@ -386,7 +386,7 @@ Resources:
 #      Runtime: python3.9
 #      MemorySize: 256
 #      Timeout: 120
-#      Tracing: Active
+#      Tracing: PassThrough
 #      ReservedConcurrentExecutions: 60
 #      Environment:
 #        Variables:
@@ -426,7 +426,7 @@ Resources:
       Runtime: python3.9
       MemorySize: 128
       Timeout: 10
-      Tracing: Active
+      Tracing: PassThrough
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
@@ -453,7 +453,7 @@ Resources:
       Runtime: python3.9
       MemorySize: 128
       Timeout: 60
-      Tracing: Active
+      Tracing: PassThrough
       Environment:
         Variables:
           TABLE_NAME: !Ref RecordTableName
